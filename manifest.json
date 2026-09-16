@@ -1,3 +1,4 @@
+[
   {
     "name": "Jellyfin Ambient Light",
     "description": "Client-side blurred background for the Jellyfin web player.",
@@ -16,3 +17,4 @@
       }
     ]
   }
+]
