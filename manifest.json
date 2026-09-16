@@ -1,9 +1,9 @@
-[
   {
     "name": "Jellyfin Ambient Light",
     "description": "Client-side blurred background for the Jellyfin web player.",
     "overview": "Adds a blurred copy of the current video behind the player to fill letterbox and pillarbox areas.",
     "owner": "hypercrites",
+    "imageUrl": "https://raw.githubusercontent.com/hypercrites/jellyfin-ambient-light-plugin/refs/heads/main/thumb.png",
     "category": "General",
     "versions": [
       {
@@ -16,4 +16,3 @@
       }
     ]
   }
-]
