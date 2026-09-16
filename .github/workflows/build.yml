@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.AmbientLight.csproj
+
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.AmbientLight.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish Jellyfin.Plugin.AmbientLight.csproj --configuration Release --output dist/build --no-restore --no-self-contained
+
+      - name: Package
+        run: |
+          mkdir -p dist/package
+          cp dist/build/Jellyfin.Plugin.AmbientLight.dll dist/package/
+          cp meta.json dist/package/
+          cd dist/package
+          zip -9 -j ../jellyfin-ambient-light-v1.0.0.0.zip Jellyfin.Plugin.AmbientLight.dll meta.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-ambient-light
+          path: dist/jellyfin-ambient-light-v1.0.0.0.zip
