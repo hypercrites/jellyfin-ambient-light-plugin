@@ -18,17 +18,6 @@ The video is not re-encoded and the server does not process video frames.
 - Server-side settings page
 - Player replacement / SPA navigation recovery
 
-## Repository installation
-
-1. Push this project to a public GitHub repository.
-2. Create a GitHub Release for the version from `meta.json`.
-3. Upload the packaged release ZIP.
-4. Set `sourceUrl` and `checksum` in `manifest.json` to that release ZIP.
-5. In Jellyfin open Dashboard -> Plugins -> Repositories.
-6. Add the raw URL to this repository's `manifest.json`.
-7. Install `Jellyfin Ambient Light` from the plugin catalog.
-8. Restart Jellyfin.
-
 ## Configuration
 
 Open Dashboard -> Plugins -> Jellyfin Ambient Light.
