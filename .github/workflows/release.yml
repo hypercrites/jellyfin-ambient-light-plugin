@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.AmbientLight.csproj
+
+      - name: Publish
+        run: dotnet publish Jellyfin.Plugin.AmbientLight.csproj --configuration Release --output dist/build --no-restore --no-self-contained
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist/package
+          cp dist/build/Jellyfin.Plugin.AmbientLight.dll dist/package/
+          cp meta.json dist/package/
+          cd dist/package
+          zip -9 -j "../jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip" Jellyfin.Plugin.AmbientLight.dll meta.json
+
+      - name: Calculate MD5
+        id: md5
+        shell: bash
+        run: |
+          file="dist/jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip"
+          checksum=$(md5sum "$file" | awk '{print toupper($1)}')
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+          echo "MD5: $checksum"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Jellyfin Ambient Light v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: dist/jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip
+          body: |
+            ## Jellyfin Ambient Light v${{ steps.version.outputs.version }}
+
+            MD5 checksum:
+            `${{ steps.md5.outputs.checksum }}`
