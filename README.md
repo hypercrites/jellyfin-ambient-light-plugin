@@ -37,14 +37,10 @@ The server settings define the defaults for clients. The player button stores th
 
 The effect is available to Jellyfin web clients. Native clients which do not load the Jellyfin web interface are not modified.
 
-## Build
-
-The plugin targets .NET 10 and Jellyfin 12.1.0 packages. The .NET SDK is required only on the build machine, not on the Jellyfin server.
-
-```bash
-dotnet build -c Release
-```
-
 ## ABI
 
 The Jellyfin 12 plugin ABI lane is `12.0.0.0`; Jellyfin 12.1.x is built against that lane. Plugin packages therefore advertise `12.0.0.0` as their `targetAbi`.
+
+## AI
+
+I build this with AI, for me. If you are against AI, just don't use it. ¯\_(ツ)_/¯
