@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Jellyfin Ambient Light</title>
+</head>
+<body>
+<div id="JellyfinAmbientLightConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="JellyfinAmbientLightConfigurationForm">
+                <div class="detailSectionHeader">Jellyfin Ambient Light</div>
+
+                <div class="fieldDescription" style="margin-bottom:1.5em;">
+                    Adds a blurred copy of the current video behind the player to fill
+                    letterbox and pillarbox areas. Rendering happens entirely in the web client.
+                </div>
+
+                <label class="checkboxContainer">
+                    <input id="EnabledByDefault" type="checkbox">
+                    <span>Enabled by default</span>
+                </label>
+
+                <div class="fieldDescription">
+                    The default state for each browser. Users can override it with the player button.
+                </div>
+
+                <label class="checkboxContainer">
+                    <input id="ShowPlayerButton" type="checkbox">
+                    <span>Show button in the video player</span>
+                </label>
+
+                <div class="inputContainer">
+                    <label for="Blur">Blur strength</label>
+                    <input id="Blur" type="number" min="0" max="200" step="1">
+                    <div class="fieldDescription">Default: 100 px</div>
+                </div>
+
+                <div class="inputContainer">
+                    <label for="Fps">Background FPS</label>
+                    <input id="Fps" type="number" min="1" max="30" step="1">
+                    <div class="fieldDescription">Default: 12 FPS</div>
+                </div>
+
+                <div class="inputContainer">
+                    <label for="Opacity">Background opacity</label>
+                    <input id="Opacity" type="number" min="0" max="100" step="1">
+                    <div class="fieldDescription">Default: 90 %</div>
+                </div>
+
+                <div class="inputContainer">
+                    <label for="Scale">Background scale</label>
+                    <input id="Scale" type="number" min="1" max="1.5" step="0.01">
+                    <div class="fieldDescription">Default: 1.08</div>
+                </div>
+
+                <button is="emby-button" type="submit" class="raised block emby-button">
+                    <span>Save</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        const JellyfinAmbientLightConfig = {
+            pluginId: 'b40b0a76-4ff2-4b39-a35b-5d1193e3f0c7'
+        };
+
+        document.querySelector('#JellyfinAmbientLightConfigPage').addEventListener('pageshow', function () {
+            Dashboard.showLoadingMsg();
+
+            ApiClient.getPluginConfiguration(JellyfinAmbientLightConfig.pluginId).then(function (config) {
+                document.querySelector('#EnabledByDefault').checked = config.EnabledByDefault;
+                document.querySelector('#ShowPlayerButton').checked = config.ShowPlayerButton;
+                document.querySelector('#Blur').value = config.Blur;
+                document.querySelector('#Fps').value = config.Fps;
+                document.querySelector('#Opacity').value = config.Opacity;
+                document.querySelector('#Scale').value = config.Scale;
+
+                Dashboard.hideLoadingMsg();
+            });
+        });
+
+        document.querySelector('#JellyfinAmbientLightConfigurationForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            Dashboard.showLoadingMsg();
+
+            ApiClient.getPluginConfiguration(JellyfinAmbientLightConfig.pluginId).then(function (config) {
+                config.EnabledByDefault = document.querySelector('#EnabledByDefault').checked;
+                config.ShowPlayerButton = document.querySelector('#ShowPlayerButton').checked;
+                config.Blur = parseInt(document.querySelector('#Blur').value, 10);
+                config.Fps = parseInt(document.querySelector('#Fps').value, 10);
+                config.Opacity = parseInt(document.querySelector('#Opacity').value, 10);
+                config.Scale = parseFloat(document.querySelector('#Scale').value);
+                return ApiClient.updatePluginConfiguration(JellyfinAmbientLightConfig.pluginId, config);
+            }).then(function (result) {
+                Dashboard.processPluginConfigurationUpdateResult(result);
+                Dashboard.hideLoadingMsg();
+            });
+        });
+    </script>
+</div>
+</body>
+</html>
