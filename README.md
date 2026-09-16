@@ -1,28 +1,17 @@
 # Jellyfin Ambient Light
 
-Jellyfin Ambient Light adds a client-side ambient background to the Jellyfin web player. The current video frame is copied to a small canvas, enlarged and blurred behind the normal player image. The effect fills letterbox and pillarbox areas.
+Jellyfin Ambient Light adds a client-side blurred background to the Jellyfin web player. The current video frame is copied to a small canvas, enlarged and blurred behind the normal player image to fill letterbox and pillarbox areas.
 
 The video is not re-encoded and the server does not process video frames.
 
-## Features
+## Requirements
 
 - Jellyfin 12.x
-- Client-side rendering
-- 320x180 canvas
-- 12 FPS default
-- 100 px blur default
-- 90% opacity default
-- 1.08x background scale default
-- Optional player button
-- Per-browser on/off state
-- Server-side settings page
-- Player replacement / SPA navigation recovery
+- JavaScript Injector 4.0.0.0 or newer
 
-## Configuration
+The plugin registers its browser script through the JavaScript Injector plugin's public registration interface. It does not modify Jellyfin web files on disk.
 
-Open Dashboard -> Plugins -> Jellyfin Ambient Light.
-
-Defaults:
+## Defaults
 
 - Enabled by default: true
 - Player button: true
@@ -30,17 +19,26 @@ Defaults:
 - FPS: 12
 - Opacity: 90%
 - Scale: 1.08
+- Canvas: 320x180
 
-The server settings define the defaults for clients. The player button stores the user's on/off state in browser localStorage, so one user can disable the effect without changing it for other users.
+Server settings provide defaults. The player button stores the user's choice in browser localStorage so each browser can enable or disable the effect independently.
 
-## Client scope
+## Installation
 
-The effect is available to Jellyfin web clients. Native clients which do not load the Jellyfin web interface are not modified.
+Add the raw repository manifest to Jellyfin:
 
-## ABI
+`https://raw.githubusercontent.com/hypercrites/jellyfin-ambient-light-plugin/main/manifest.json`
 
-The Jellyfin 12 plugin ABI lane is `12.0.0.0`; Jellyfin 12.1.x is built against that lane. Plugin packages therefore advertise `12.0.0.0` as their `targetAbi`.
+Then install Jellyfin Ambient Light from the plugin catalog and restart Jellyfin.
 
-## AI
+## Build
 
-I build this with AI, for me. If you are against AI, just don't use it. ¯\_(ツ)_/¯
+The project targets .NET 10 and Jellyfin 12.1 packages. The .NET SDK is only required on the build machine or by GitHub Actions, not on the Jellyfin server.
+
+```bash
+dotnet publish Jellyfin.Plugin.AmbientLight.csproj -c Release -o dist/build --no-self-contained
+```
+
+## Release
+
+Create a GitHub tag such as `v1.0.1.0`. GitHub Actions builds and publishes the release ZIP automatically. Copy the MD5 shown in the release notes into the matching `manifest.json` version entry.

@@ -6,15 +6,16 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>Jellyfin.Plugin.AmbientLight</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.AmbientLight</RootNamespace>
-    <Version>1.0.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.1.0</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="12.1.0" ExcludeAssets="runtime" />
     <PackageReference Include="Jellyfin.Model" Version="12.1.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
   <ItemGroup>

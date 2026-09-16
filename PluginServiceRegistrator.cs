@@ -6,9 +6,7 @@ namespace Jellyfin.Plugin.AmbientLight;
 
 public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
 {
-    public void RegisterServices(
-        IServiceCollection serviceCollection,
-        IServerApplicationHost applicationHost)
+    public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddHostedService<AmbientLightStartupService>();
     }

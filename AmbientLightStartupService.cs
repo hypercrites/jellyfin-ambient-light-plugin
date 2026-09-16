@@ -6,25 +6,16 @@ namespace Jellyfin.Plugin.AmbientLight;
 public sealed class AmbientLightStartupService : IHostedService, IDisposable
 {
     private readonly ILogger<AmbientLightStartupService> _logger;
-    private readonly MediaBrowser.Common.Configuration.IApplicationPaths _applicationPaths;
     private Timer? _timer;
 
-    public AmbientLightStartupService(
-        MediaBrowser.Common.Configuration.IApplicationPaths applicationPaths,
-        ILogger<AmbientLightStartupService> logger)
+    public AmbientLightStartupService(ILogger<AmbientLightStartupService> logger)
     {
-        _applicationPaths = applicationPaths;
         _logger = logger;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        EnsureInjected(null);
-        _timer = new Timer(
-            EnsureInjected,
-            null,
-            TimeSpan.FromSeconds(15),
-            TimeSpan.FromSeconds(30));
+        _timer = new Timer(Register, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
         return Task.CompletedTask;
     }
 
@@ -34,15 +25,21 @@ public sealed class AmbientLightStartupService : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    private void EnsureInjected(object? state)
+    private void Register(object? state)
     {
-        try
+        var plugin = Plugin.Instance;
+        if (plugin is null)
         {
-            WebInjector.EnsureInjected(_applicationPaths.WebPath);
+            return;
         }
-        catch (Exception ex)
+
+        if (JavaScriptInjectorBridge.TryRegister(plugin))
         {
-            _logger.LogError(ex, "Failed to inject Jellyfin Ambient Light into the Jellyfin web client.");
+            _timer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            _logger.LogDebug("Ambient Light registration will be retried.");
         }
     }
 

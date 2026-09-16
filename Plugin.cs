@@ -1,25 +1,30 @@
-using System.Collections.Generic;
-using System.Text;
-using System.Text.RegularExpressions;
-using MediaBrowser.Common.Configuration;
+using System.Reflection;
+using System.Runtime.Loader;
+using Newtonsoft.Json.Linq;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.AmbientLight;
 
 public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+    private const string ScriptId = "b40b0a76-4ff2-4b39-a35b-5d1193e3f0c7-ambient-light";
+    private const string ScriptResourceName = "Jellyfin.Plugin.AmbientLight.Web.ambient-light.js";
+    private readonly ILogger<Plugin> _logger;
+
+    public Plugin(
+        MediaBrowser.Common.Configuration.IApplicationPaths applicationPaths,
+        IXmlSerializer xmlSerializer,
+        ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
-        ApplicationPaths = applicationPaths;
+        _logger = logger;
     }
 
     public static Plugin? Instance { get; private set; }
-
-    public IApplicationPaths ApplicationPaths { get; }
 
     public override string Name => "Jellyfin Ambient Light";
 
@@ -34,86 +39,131 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         [
             new PluginPageInfo
             {
-                Name = "Jellyfin Ambient Light",
-                DisplayName = "Jellyfin Ambient Light",
+                Name = Name,
+                DisplayName = Name,
                 EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html",
-                EnableInMainMenu = false
+                EnableInMainMenu = false,
+                MenuIcon = "blur_on"
             }
         ];
     }
 
-    public override void OnUninstalling()
+    internal string GetScript()
     {
-        WebInjector.Remove(ApplicationPaths.WebPath);
-        base.OnUninstalling();
+        var assembly = GetType().Assembly;
+
+        using var stream = assembly.GetManifestResourceStream(ScriptResourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{ScriptResourceName}' was not found.");
+
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
+
+    internal string GetScriptId() => ScriptId;
+
+    internal void LogDebug(string message, params object?[] args) => _logger.LogDebug(message, args);
+    internal void LogInformation(string message, params object?[] args) => _logger.LogInformation(message, args);
+    internal void LogWarning(string message, params object?[] args) => _logger.LogWarning(message, args);
+    internal void LogError(Exception exception, string message, params object?[] args) => _logger.LogError(exception, message, args);
 }
 
-internal static class WebInjector
+internal static class JavaScriptInjectorBridge
 {
-    private const string StartMarker = "<!-- JF_AMBIENT_LIGHT_START -->";
-    private const string EndMarker = "<!-- JF_AMBIENT_LIGHT_END -->";
-    private const string ResourceName = "Jellyfin.Plugin.AmbientLight.Web.ambient-light.js";
+    private const string InjectorAssemblyName = "Jellyfin.Plugin.JavaScriptInjector";
+    private static Type? _interfaceType;
 
-    public static void EnsureInjected(string webPath)
+    public static bool TryRegister(Plugin plugin)
     {
-        var indexPath = Path.Combine(webPath, "index.html");
-
-        if (!File.Exists(indexPath))
+        try
         {
-            return;
+            var interfaceType = FindInterfaceType();
+            if (interfaceType is null)
+            {
+                plugin.LogWarning("JavaScript Injector was not found. Jellyfin Ambient Light JavaScript was not registered.");
+                return false;
+            }
+
+            var method = interfaceType.GetMethod("RegisterScript", BindingFlags.Public | BindingFlags.Static);
+            if (method is null)
+            {
+                plugin.LogWarning("JavaScript Injector was found, but RegisterScript is unavailable.");
+                return false;
+            }
+
+            var payload = new JObject
+            {
+                ["id"] = plugin.GetScriptId(),
+                ["name"] = plugin.Name,
+                ["script"] = plugin.GetScript(),
+                ["enabled"] = true,
+                ["requiresAuthentication"] = false,
+                ["pluginId"] = plugin.Id.ToString(),
+                ["pluginName"] = plugin.Name,
+                ["pluginVersion"] = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "1.0.1.0"
+            };
+
+            var result = method.Invoke(null, [payload]);
+            if (result is true)
+            {
+                plugin.LogInformation("Ambient Light JavaScript registered with JavaScript Injector.");
+                return true;
+            }
+
+            plugin.LogWarning("JavaScript Injector rejected the Ambient Light script registration.");
+            return false;
         }
-
-        var script = LoadScript();
-        var block = $"{StartMarker}<script>{script}</script>{EndMarker}";
-        var content = File.ReadAllText(indexPath);
-        var cleaned = RemoveExistingBlock(content);
-
-        var bodyIndex = cleaned.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
-        if (bodyIndex < 0)
+        catch (Exception ex)
         {
-            return;
-        }
-
-        var updated = cleaned.Insert(bodyIndex, block);
-        if (!string.Equals(content, updated, StringComparison.Ordinal))
-        {
-            File.WriteAllText(indexPath, updated);
+            plugin.LogError(ex, "Failed to register Ambient Light JavaScript with JavaScript Injector.");
+            return false;
         }
     }
 
-    public static void Remove(string webPath)
+    public static bool TryUnregister(Plugin plugin)
     {
-        var indexPath = Path.Combine(webPath, "index.html");
-
-        if (!File.Exists(indexPath))
+        try
         {
-            return;
+            var interfaceType = FindInterfaceType();
+            if (interfaceType is null)
+            {
+                return false;
+            }
+
+            var method = interfaceType.GetMethod("UnregisterAllScriptsFromPlugin", BindingFlags.Public | BindingFlags.Static);
+            if (method is null)
+            {
+                return false;
+            }
+
+            var result = method.Invoke(null, [plugin.Id.ToString()]);
+            if (result is int removedCount)
+            {
+                plugin.LogInformation("Removed {Count} Ambient Light JavaScript registration(s).", removedCount);
+                return true;
+            }
+
+            return false;
         }
-
-        var content = File.ReadAllText(indexPath);
-        var cleaned = RemoveExistingBlock(content);
-
-        if (!string.Equals(content, cleaned, StringComparison.Ordinal))
+        catch (Exception ex)
         {
-            File.WriteAllText(indexPath, cleaned);
+            plugin.LogError(ex, "Failed to unregister Ambient Light JavaScript from JavaScript Injector.");
+            return false;
         }
     }
 
-    private static string RemoveExistingBlock(string content)
+    private static Type? FindInterfaceType()
     {
-        var pattern = Regex.Escape(StartMarker) + "[\\s\\S]*?" + Regex.Escape(EndMarker);
-        return Regex.Replace(content, pattern, string.Empty, RegexOptions.Multiline);
-    }
+        if (_interfaceType is not null)
+        {
+            return _interfaceType;
+        }
 
-    private static string LoadScript()
-    {
-        var assembly = typeof(WebInjector).Assembly;
+        var assembly = AssemblyLoadContext.All
+            .SelectMany(context => context.Assemblies)
+            .FirstOrDefault(assembly =>
+                string.Equals(assembly.GetName().Name, InjectorAssemblyName, StringComparison.OrdinalIgnoreCase));
 
-        using var stream = assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException($"Embedded resource '{ResourceName}' was not found.");
-
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        return reader.ReadToEnd();
+        _interfaceType = assembly?.GetType("Jellyfin.Plugin.JavaScriptInjector.PluginInterface");
+        return _interfaceType;
     }
 }
