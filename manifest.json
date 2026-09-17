@@ -13,7 +13,7 @@
         "changelog": "Fix player button detection and place the Ambient Light button directly before the fullscreen button in Jellyfin Web 12.1.",
         "targetAbi": "12.0.0.0",
         "sourceUrl": "https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v1.0.3.0/jellyfin-ambient-light-v1.0.3.0.zip",
-        "checksum": "",
+        "checksum": "1750C2161A30FE82ACDCB2CC5315E828",
         "timestamp": "2026-09-17T00:00:00Z"
       },
       {
