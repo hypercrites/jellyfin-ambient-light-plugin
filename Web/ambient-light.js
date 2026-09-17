@@ -1,6 +1,6 @@
 (() => {
     const PLUGIN_ID = "b40b0a76-4ff2-4b39-a35b-5d1193e3f0c7";
-    const STORAGE_KEY = "jfAmbientLightUserEnabled";
+    const STORAGE_PREFIX = "jfAmbientLightUserEnabled";
     const BUTTON_ID = "jf-ambient-light-player-button";
     const CANVAS_ID = "jf-ambient-light-canvas";
 
@@ -29,17 +29,65 @@
         videoEvents: [],
         originalStyles: {},
         lastSource: null,
-        button: null
+        button: null,
+        userId: "default"
     };
 
     function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
     }
 
+    function getUserId() {
+        try {
+            if (window.ApiClient && typeof ApiClient.getCurrentUserId === "function") {
+                const id = ApiClient.getCurrentUserId();
+                if (id) {
+                    return String(id);
+                }
+            }
+        } catch (_) {
+        }
+
+        return "default";
+    }
+
+    function getStorageKey() {
+        return `${STORAGE_PREFIX}:${state.userId}`;
+    }
+
+    function getStoredUserEnabled() {
+        try {
+            const key = getStorageKey();
+            const stored = localStorage.getItem(key);
+
+            if (stored !== null) {
+                return stored === "true";
+            }
+
+            const legacy = localStorage.getItem(STORAGE_PREFIX);
+            if (legacy !== null) {
+                localStorage.setItem(key, legacy);
+                localStorage.removeItem(STORAGE_PREFIX);
+                return legacy === "true";
+            }
+        } catch (_) {
+        }
+
+        return state.enabledByDefault;
+    }
+
+    function setStoredUserEnabled(enabled) {
+        try {
+            localStorage.setItem(getStorageKey(), String(enabled));
+        } catch (_) {
+        }
+    }
+
     function removeVideoEvents() {
         for (const [element, type, handler] of state.videoEvents) {
             element.removeEventListener(type, handler);
         }
+
         state.videoEvents = [];
     }
 
@@ -55,6 +103,7 @@
                 state.video.style.removeProperty(property);
             }
         }
+
         state.originalStyles = {};
     }
 
@@ -77,48 +126,6 @@
         state.canvas = null;
         state.ctx = null;
         state.lastSource = null;
-    }
-
-    function getUserEnabled() {
-        const stored = localStorage.getItem(STORAGE_KEY);
-
-        if (stored === null) {
-            return state.enabledByDefault;
-        }
-
-        return stored === "true";
-    }
-
-    function setUserEnabled(enabled) {
-        localStorage.setItem(STORAGE_KEY, String(enabled));
-        state.enabled = enabled;
-
-        if (enabled) {
-            checkPlayer();
-        } else {
-            cleanupPlayer();
-        }
-
-        updateButton();
-    }
-
-    async function loadConfiguration() {
-        try {
-            if (!window.ApiClient || typeof ApiClient.getPluginConfiguration !== "function") {
-                return;
-            }
-
-            const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
-
-            state.enabledByDefault = config.EnabledByDefault !== false;
-            state.enabled = getUserEnabled();
-            state.showButton = config.ShowPlayerButton !== false;
-            state.blur = clamp(Number(config.Blur) || 100, 0, 200);
-            state.fps = clamp(Number(config.Fps) || 12, 1, 30);
-            state.opacity = clamp(Number(config.Opacity) || 90, 0, 100);
-            state.scale = clamp(Number(config.Scale) || 1.08, 1, 1.5);
-        } catch (_) {
-        }
     }
 
     function findPlayer() {
@@ -151,7 +158,13 @@
         }
 
         try {
-            state.ctx.drawImage(state.video, 0, 0, state.canvas.width, state.canvas.height);
+            state.ctx.drawImage(
+                state.video,
+                0,
+                0,
+                state.canvas.width,
+                state.canvas.height
+            );
         } catch (_) {
         }
     }
@@ -162,7 +175,7 @@
         state.video = video;
         state.container = container;
         state.lastSource = video.currentSrc || video.src || null;
-        state.enabled = getUserEnabled();
+        state.enabled = getStoredUserEnabled();
 
         if (!state.enabled) {
             return;
@@ -226,11 +239,14 @@
         );
 
         updateCanvas(true);
-        state.timer = setInterval(() => updateCanvas(false), Math.round(1000 / state.fps));
+
+        state.timer = setInterval(() => {
+            updateCanvas(false);
+        }, Math.round(1000 / state.fps));
     }
 
     function checkPlayer() {
-        if (!getUserEnabled()) {
+        if (!getStoredUserEnabled()) {
             if (state.video || state.canvas) {
                 cleanupPlayer();
             }
@@ -257,27 +273,103 @@
         }
     }
 
-    function findButtonHost() {
-        const bottom = document.querySelector(".videoOsdBottom");
-        if (!bottom) {
-            return null;
+    function isFullscreenButton(element) {
+        if (!element) {
+            return false;
         }
 
-        const selectors = [
-            ".buttons",
-            ".videoOsdButtons",
-            "[class*='buttons']"
-        ];
+        const title = element.getAttribute("title") || "";
+        const ariaLabel = element.getAttribute("aria-label") || "";
+        const text = element.textContent || "";
+        const className = typeof element.className === "string" ? element.className : "";
 
-        for (const selector of selectors) {
-            const candidate = bottom.querySelector(selector);
-            if (candidate) {
-                return candidate;
+        const label = `${title} ${ariaLabel} ${text} ${className}`.toLowerCase();
+
+        if (/fullscreen|full screen|vollbild/.test(label)) {
+            return true;
+        }
+
+        const icon = element.querySelector(".material-icons, .material-icons-round, [class*='material-icons']");
+        if (icon) {
+            const iconText = (icon.textContent || "").trim().toLowerCase();
+            if (iconText === "fullscreen" || iconText === "fullscreen_exit") {
+                return true;
             }
         }
 
-        const button = bottom.querySelector("button, a");
-        return button ? button.parentElement : null;
+        return false;
+    }
+
+    function findFullscreenButton() {
+        const container = document.querySelector(".videoPlayerContainer");
+        if (!container) {
+            return null;
+        }
+
+        const candidates = container.querySelectorAll("button, a, [role='button']");
+
+        for (const element of candidates) {
+            if (isFullscreenButton(element)) {
+                return element;
+            }
+        }
+
+        return null;
+    }
+
+    function findButtonHost(fullscreenButton) {
+        let current = fullscreenButton?.parentElement || null;
+        let fallback = current;
+
+        for (let depth = 0; current && depth < 5; depth++, current = current.parentElement) {
+            const directControls = [...current.children].filter(element =>
+                element.matches?.("button, a, [role='button']")
+            );
+
+            if (directControls.length >= 2) {
+                return current;
+            }
+
+            if (current.matches?.("[class*='buttons'], [class*='Buttons'], .videoOsdBottom")) {
+                fallback = current;
+            }
+        }
+
+        return fallback;
+    }
+
+    function getDirectChildContaining(parent, element) {
+        if (!parent || !element) {
+            return null;
+        }
+
+        for (const child of parent.children) {
+            if (child === element || child.contains(element)) {
+                return child;
+            }
+        }
+
+        return null;
+    }
+
+    function positionButtonBeforeFullscreen(button, fullscreenButton) {
+        const host = findButtonHost(fullscreenButton);
+
+        if (!host) {
+            return false;
+        }
+
+        const target = getDirectChildContaining(host, fullscreenButton);
+
+        if (!target) {
+            return false;
+        }
+
+        if (button.parentElement !== host || button.nextElementSibling !== target) {
+            host.insertBefore(button, target);
+        }
+
+        return true;
     }
 
     function createButton() {
@@ -286,35 +378,34 @@
             return;
         }
 
-        const existing = document.getElementById(BUTTON_ID);
-        if (existing) {
-            state.button = existing;
-            updateButton();
+        const fullscreenButton = findFullscreenButton();
+        if (!fullscreenButton) {
             return;
         }
 
-        const host = findButtonHost();
-        if (!host) {
-            return;
+        let button = document.getElementById(BUTTON_ID);
+
+        if (!button) {
+            button = document.createElement("button");
+            button.type = "button";
+            button.id = BUTTON_ID;
+            button.className = "paper-icon-button-light";
+            button.title = "Ambient Light";
+            button.setAttribute("aria-label", "Ambient Light");
+            button.setAttribute("aria-pressed", String(getStoredUserEnabled()));
+            button.setAttribute("data-jf-ambient-light-button", "true");
+            button.innerHTML = '<span class="material-icons">blur_on</span>';
+
+            button.addEventListener("click", event => {
+                event.preventDefault();
+                event.stopPropagation();
+                setUserEnabled(!getStoredUserEnabled());
+            });
         }
 
-        const button = document.createElement("button");
-        button.type = "button";
-        button.id = BUTTON_ID;
-        button.className = "paper-icon-button-light";
-        button.title = "Ambient Light";
-        button.setAttribute("aria-label", "Ambient Light");
-        button.setAttribute("data-jf-ambient-light-button", "true");
-        button.innerHTML = '<span class="material-icons">auto_awesome</span>';
-
-        button.addEventListener("click", event => {
-            event.preventDefault();
-            event.stopPropagation();
-            setUserEnabled(!getUserEnabled());
-        });
-
-        host.appendChild(button);
         state.button = button;
+
+        positionButtonBeforeFullscreen(button, fullscreenButton);
         updateButton();
     }
 
@@ -324,18 +415,58 @@
             return;
         }
 
-        const enabled = getUserEnabled();
+        const enabled = getStoredUserEnabled();
+
         button.style.opacity = enabled ? "1" : "0.45";
         button.title = enabled ? "Ambient Light: Ein" : "Ambient Light: Aus";
+        button.setAttribute("aria-label", enabled ? "Ambient Light: Ein" : "Ambient Light: Aus");
         button.setAttribute("aria-pressed", String(enabled));
     }
 
     function removeButton() {
         const button = document.getElementById(BUTTON_ID);
+
         if (button) {
             button.remove();
         }
+
         state.button = null;
+    }
+
+    function setUserEnabled(enabled) {
+        state.enabled = enabled;
+        setStoredUserEnabled(enabled);
+
+        if (enabled) {
+            checkPlayer();
+        } else {
+            cleanupPlayer();
+        }
+
+        updateButton();
+    }
+
+    async function loadConfiguration() {
+        state.userId = getUserId();
+
+        try {
+            if (!window.ApiClient || typeof ApiClient.getPluginConfiguration !== "function") {
+                state.enabled = getStoredUserEnabled();
+                return;
+            }
+
+            const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
+
+            state.enabledByDefault = config.EnabledByDefault !== false;
+            state.showButton = config.ShowPlayerButton !== false;
+            state.blur = clamp(Number(config.Blur) || 100, 0, 200);
+            state.fps = clamp(Number(config.Fps) || 12, 1, 30);
+            state.opacity = clamp(Number(config.Opacity) || 90, 0, 100);
+            state.scale = clamp(Number(config.Scale) || 1.08, 1, 1.5);
+            state.enabled = getStoredUserEnabled();
+        } catch (_) {
+            state.enabled = getStoredUserEnabled();
+        }
     }
 
     function checkButton() {
@@ -345,7 +476,6 @@
         }
 
         createButton();
-        updateButton();
     }
 
     function startObservers() {
@@ -383,6 +513,7 @@
         removeButton();
 
         delete window.jfAmbientLightStop;
+        delete window.__jfAmbientLightLoaded;
     };
 
     (async () => {
@@ -390,5 +521,6 @@
         checkPlayer();
         checkButton();
         startObservers();
+        console.log("Jellyfin Ambient Light aktiviert.");
     })();
 })();
