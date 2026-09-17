@@ -39,6 +39,6 @@ The project targets .NET 10 and Jellyfin 12.1 packages. The .NET SDK is only req
 dotnet publish Jellyfin.Plugin.AmbientLight.csproj -c Release -o dist/build --no-self-contained
 ```
 
-## Release
+## AI
 
-Create a GitHub tag such as `v1.0.3.0`. GitHub Actions builds and publishes the release ZIP automatically. Copy the MD5 shown in the release notes into the matching `manifest.json` version entry.
+I build this for myself with AI, if you are against AI, don't use it. ¯\\\_(ツ)\_/¯
