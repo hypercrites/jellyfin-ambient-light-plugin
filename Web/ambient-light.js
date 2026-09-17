@@ -301,12 +301,13 @@
     }
 
     function findFullscreenButton() {
-        const container = document.querySelector(".videoPlayerContainer");
-        if (!container) {
-            return null;
+        const direct = document.querySelector("button.btnFullscreen");
+
+        if (direct && direct.isConnected) {
+            return direct;
         }
 
-        const candidates = container.querySelectorAll("button, a, [role='button']");
+        const candidates = document.querySelectorAll("button, a, [role='button']");
 
         for (const element of candidates) {
             if (isFullscreenButton(element)) {
@@ -317,56 +318,15 @@
         return null;
     }
 
-    function findButtonHost(fullscreenButton) {
-        let current = fullscreenButton?.parentElement || null;
-        let fallback = current;
-
-        for (let depth = 0; current && depth < 5; depth++, current = current.parentElement) {
-            const directControls = [...current.children].filter(element =>
-                element.matches?.("button, a, [role='button']")
-            );
-
-            if (directControls.length >= 2) {
-                return current;
-            }
-
-            if (current.matches?.("[class*='buttons'], [class*='Buttons'], .videoOsdBottom")) {
-                fallback = current;
-            }
-        }
-
-        return fallback;
-    }
-
-    function getDirectChildContaining(parent, element) {
-        if (!parent || !element) {
-            return null;
-        }
-
-        for (const child of parent.children) {
-            if (child === element || child.contains(element)) {
-                return child;
-            }
-        }
-
-        return null;
-    }
-
     function positionButtonBeforeFullscreen(button, fullscreenButton) {
-        const host = findButtonHost(fullscreenButton);
+        const parent = fullscreenButton?.parentElement || null;
 
-        if (!host) {
+        if (!parent) {
             return false;
         }
 
-        const target = getDirectChildContaining(host, fullscreenButton);
-
-        if (!target) {
-            return false;
-        }
-
-        if (button.parentElement !== host || button.nextElementSibling !== target) {
-            host.insertBefore(button, target);
+        if (button.parentElement !== parent || button.nextElementSibling !== fullscreenButton) {
+            parent.insertBefore(button, fullscreenButton);
         }
 
         return true;

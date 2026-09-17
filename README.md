@@ -41,4 +41,4 @@ dotnet publish Jellyfin.Plugin.AmbientLight.csproj -c Release -o dist/build --no
 
 ## Release
 
-Create a GitHub tag such as `v1.0.1.0`. GitHub Actions builds and publishes the release ZIP automatically. Copy the MD5 shown in the release notes into the matching `manifest.json` version entry.
+Create a GitHub tag such as `v1.0.3.0`. GitHub Actions builds and publishes the release ZIP automatically. Copy the MD5 shown in the release notes into the matching `manifest.json` version entry.
