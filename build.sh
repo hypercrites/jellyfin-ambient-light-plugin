@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.0.4.0"
+VERSION="1.0.5.0"
 rm -rf dist
 mkdir -p dist/package
 

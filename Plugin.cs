@@ -99,7 +99,7 @@ internal static class JavaScriptInjectorBridge
                 ["requiresAuthentication"] = false,
                 ["pluginId"] = plugin.Id.ToString(),
                 ["pluginName"] = plugin.Name,
-                ["pluginVersion"] = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "1.0.4.0"
+                ["pluginVersion"] = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "1.0.5.0"
             };
 
             var result = method.Invoke(null, [payload]);
