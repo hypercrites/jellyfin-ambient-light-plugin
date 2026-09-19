@@ -6,9 +6,9 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>Jellyfin.Plugin.AmbientLight</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.AmbientLight</RootNamespace>
-    <Version>1.0.3.0</Version>
-    <AssemblyVersion>1.0.3.0</AssemblyVersion>
-    <FileVersion>1.0.3.0</FileVersion>
+    <Version>1.0.4.0</Version>
+    <AssemblyVersion>1.0.4.0</AssemblyVersion>
+    <FileVersion>1.0.4.0</FileVersion>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 

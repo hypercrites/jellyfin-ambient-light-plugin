@@ -9,11 +9,11 @@
     "category": "General",
     "versions": [
       {
-        "version": "1.0.3.0",
+        "version": "1.0.4.0",
         "changelog": "Fix player button detection and place the Ambient Light button directly before the fullscreen button in Jellyfin Web 12.1.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v1.0.3.0/jellyfin-ambient-light-v1.0.3.0.zip",
-        "checksum": "1750C2161A30FE82ACDCB2CC5315E828",
+        "sourceUrl": "https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v1.0.4.0/jellyfin-ambient-light-v1.0.4.0.zip",
+        "checksum": "",
         "timestamp": "2026-09-17T00:00:00Z"
       },
       {
@@ -21,7 +21,7 @@
         "changelog": "Store the Ambient Light preference per Jellyfin user, make the player button self-healing, and place it directly before the fullscreen button.",
         "targetAbi": "12.0.0.0",
         "sourceUrl": "https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v1.0.2.0/jellyfin-ambient-light-v1.0.2.0.zip",
-        "checksum": "C65B98FCE16C3496859637E0466053E1",
+        "checksum": "",
         "timestamp": "2026-09-17T00:00:00Z"
       },
       {
@@ -29,7 +29,7 @@
         "changelog": "Register the web client script through JavaScript Injector instead of modifying Jellyfin web files. Adds the initial player toggle integration.",
         "targetAbi": "12.0.0.0",
         "sourceUrl": "https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v1.0.1.0/jellyfin-ambient-light-v1.0.1.0.zip",
-        "checksum": "49B21CC121312D3BE155E454DF487CB5",
+        "checksum": "",
         "timestamp": "2026-09-16T00:00:00Z"
       },
       {

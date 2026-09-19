@@ -26,6 +26,7 @@
         observer: null,
         playerTimer: null,
         buttonTimer: null,
+        fastButtonTimer: null,
         videoEvents: [],
         originalStyles: {},
         lastSource: null,
@@ -451,6 +452,18 @@
 
         state.playerTimer = setInterval(checkPlayer, 1500);
         state.buttonTimer = setInterval(checkButton, 1000);
+
+        let attempts = 0;
+
+        state.fastButtonTimer = setInterval(() => {
+            checkButton();
+            attempts++;
+
+            if (attempts >= 32) {
+                clearInterval(state.fastButtonTimer);
+                state.fastButtonTimer = null;
+            }
+        }, 250);
     }
 
     window.jfAmbientLightStop = () => {
@@ -462,6 +475,11 @@
         if (state.buttonTimer) {
             clearInterval(state.buttonTimer);
             state.buttonTimer = null;
+        }
+
+        if (state.fastButtonTimer) {
+            clearInterval(state.fastButtonTimer);
+            state.fastButtonTimer = null;
         }
 
         if (state.observer) {
