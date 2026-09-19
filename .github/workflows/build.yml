@@ -34,10 +34,10 @@ jobs:
           cp dist/build/Jellyfin.Plugin.AmbientLight.dll dist/package/
           cp meta.json dist/package/
           cd dist/package
-          zip -9 -j ../jellyfin-ambient-light-v1.0.3.0.zip Jellyfin.Plugin.AmbientLight.dll meta.json
+          zip -9 -j ../jellyfin-ambient-light-v1.0.4.0.zip Jellyfin.Plugin.AmbientLight.dll meta.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jellyfin-ambient-light
-          path: dist/jellyfin-ambient-light-v1.0.3.0.zip
+          path: dist/jellyfin-ambient-light-v1.0.4.0.zip
