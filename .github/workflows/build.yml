@@ -28,16 +28,23 @@ jobs:
       - name: Publish
         run: dotnet publish Jellyfin.Plugin.AmbientLight.csproj --configuration Release --output dist/build --no-restore --no-self-contained
 
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' Jellyfin.Plugin.AmbientLight.csproj | head -n1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Package
         run: |
           mkdir -p dist/package
           cp dist/build/Jellyfin.Plugin.AmbientLight.dll dist/package/
           cp meta.json dist/package/
           cd dist/package
-          zip -9 -j ../jellyfin-ambient-light-v1.0.5.0.zip Jellyfin.Plugin.AmbientLight.dll meta.json
+          zip -9 -j "../jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip" Jellyfin.Plugin.AmbientLight.dll meta.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jellyfin-ambient-light
-          path: dist/jellyfin-ambient-light-v1.0.5.0.zip
+          path: dist/jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip

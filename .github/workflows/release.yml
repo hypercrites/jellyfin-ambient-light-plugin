@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout tag
         uses: actions/checkout@v4
 
       - name: Setup .NET 10
@@ -28,11 +28,44 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare release metadata
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+
+          path = "meta.json"
+          version = os.environ["VERSION"]
+          timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+          with open(path, "r", encoding="utf-8") as fh:
+              meta = json.load(fh)
+
+          meta["version"] = version
+          meta["timestamp"] = timestamp
+
+          with open(path, "w", encoding="utf-8") as fh:
+              json.dump(meta, fh, indent=2, ensure_ascii=False)
+              fh.write("\n")
+          PY
+
       - name: Restore
         run: dotnet restore Jellyfin.Plugin.AmbientLight.csproj
 
       - name: Publish
-        run: dotnet publish Jellyfin.Plugin.AmbientLight.csproj --configuration Release --output dist/build --no-restore --no-self-contained
+        run: >-
+          dotnet publish Jellyfin.Plugin.AmbientLight.csproj
+          --configuration Release
+          --output dist/build
+          --no-restore
+          --no-self-contained
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:AssemblyVersion=${{ steps.version.outputs.version }}
+          -p:FileVersion=${{ steps.version.outputs.version }}
 
       - name: Package
         shell: bash
@@ -52,9 +85,10 @@ jobs:
           echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
           echo "MD5: $checksum"
 
-      - name: Create release
+      - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           name: Jellyfin Ambient Light v${{ steps.version.outputs.version }}
           generate_release_notes: true
           files: dist/jellyfin-ambient-light-v${{ steps.version.outputs.version }}.zip
@@ -63,3 +97,91 @@ jobs:
 
             MD5 checksum:
             `${{ steps.md5.outputs.checksum }}`
+
+            The repository manifest is updated automatically by this workflow.
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update release metadata and manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CHECKSUM: ${{ steps.md5.outputs.checksum }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+
+          version = os.environ["VERSION"]
+          checksum = os.environ["CHECKSUM"]
+          timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+          source_url = f"https://github.com/hypercrites/jellyfin-ambient-light-plugin/releases/download/v{version}/jellyfin-ambient-light-v{version}.zip"
+
+          manifest_path = "manifest.json"
+          with open(manifest_path, "r", encoding="utf-8") as fh:
+              manifest = json.load(fh)
+
+          version_entry = {
+              "version": version,
+              "changelog": "See the GitHub release notes for this version.",
+              "targetAbi": "12.0.0.0",
+              "sourceUrl": source_url,
+              "checksum": checksum,
+              "timestamp": timestamp,
+          }
+
+          for plugin in manifest:
+              if plugin.get("guid") == "b40b0a76-4ff2-4b39-a35b-5d1193e3f0c7":
+                  versions = [v for v in plugin.get("versions", []) if v.get("version") != version]
+                  versions.insert(0, version_entry)
+                  plugin["versions"] = versions
+                  break
+          else:
+              raise SystemExit("Ambient Light plugin entry was not found in manifest.json")
+
+          with open(manifest_path, "w", encoding="utf-8") as fh:
+              json.dump(manifest, fh, indent=2, ensure_ascii=False)
+              fh.write("\n")
+
+          meta_path = "meta.json"
+          with open(meta_path, "r", encoding="utf-8") as fh:
+              meta = json.load(fh)
+          meta["version"] = version
+          meta["timestamp"] = timestamp
+          with open(meta_path, "w", encoding="utf-8") as fh:
+              json.dump(meta, fh, indent=2, ensure_ascii=False)
+              fh.write("\n")
+
+          csproj_path = "Jellyfin.Plugin.AmbientLight.csproj"
+          csproj = open(csproj_path, "r", encoding="utf-8").read()
+          import re
+          csproj = re.sub(r"<Version>[^<]+</Version>", f"<Version>{version}</Version>", csproj)
+          csproj = re.sub(r"<AssemblyVersion>[^<]+</AssemblyVersion>", f"<AssemblyVersion>{version}</AssemblyVersion>", csproj)
+          csproj = re.sub(r"<FileVersion>[^<]+</FileVersion>", f"<FileVersion>{version}</FileVersion>", csproj)
+          open(csproj_path, "w", encoding="utf-8").write(csproj)
+
+          plugin_path = "Plugin.cs"
+          plugin = open(plugin_path, "r", encoding="utf-8").read()
+          plugin = re.sub(r'\?\? "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"', f'?? "{version}"', plugin, count=1)
+          open(plugin_path, "w", encoding="utf-8").write(plugin)
+          PY
+
+      - name: Commit release metadata
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json meta.json Jellyfin.Plugin.AmbientLight.csproj Plugin.cs
+          if git diff --cached --quiet; then
+            echo "manifest.json is already up to date."
+            exit 0
+          fi
+          git commit -m "Update release metadata for v$VERSION"
+          git push origin HEAD:main
