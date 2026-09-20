@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.0.5.0"
+VERSION="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' Jellyfin.Plugin.AmbientLight.csproj | head -n1)"
 rm -rf dist
 mkdir -p dist/package
 

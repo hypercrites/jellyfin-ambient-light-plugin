@@ -12,6 +12,7 @@ public sealed class PluginConfiguration : BasePluginConfiguration
         Fps = 12;
         Opacity = 90;
         Scale = 1.08;
+        TemporalSmoothing = 45;
     }
 
     public bool EnabledByDefault { get; set; }
@@ -25,4 +26,6 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public int Opacity { get; set; }
 
     public double Scale { get; set; }
+
+    public int TemporalSmoothing { get; set; }
 }

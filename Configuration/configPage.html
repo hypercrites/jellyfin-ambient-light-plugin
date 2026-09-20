@@ -54,6 +54,12 @@
                     <div class="fieldDescription">Default: 1.08</div>
                 </div>
 
+                <div class="inputContainer">
+                    <label for="TemporalSmoothing">Temporal smoothing</label>
+                    <input id="TemporalSmoothing" type="number" min="0" max="80" step="1">
+                    <div class="fieldDescription">Default: 45 %. Higher values retain more of the previous frame for a softer transition.</div>
+                </div>
+
                 <button is="emby-button" type="submit" class="raised block emby-button">
                     <span>Save</span>
                 </button>
@@ -76,6 +82,7 @@
                 document.querySelector('#Fps').value = config.Fps;
                 document.querySelector('#Opacity').value = config.Opacity;
                 document.querySelector('#Scale').value = config.Scale;
+                document.querySelector('#TemporalSmoothing').value = config.TemporalSmoothing;
 
                 Dashboard.hideLoadingMsg();
             });
@@ -92,6 +99,7 @@
                 config.Fps = parseInt(document.querySelector('#Fps').value, 10);
                 config.Opacity = parseInt(document.querySelector('#Opacity').value, 10);
                 config.Scale = parseFloat(document.querySelector('#Scale').value);
+                config.TemporalSmoothing = parseInt(document.querySelector('#TemporalSmoothing').value, 10);
                 return ApiClient.updatePluginConfiguration(JellyfinAmbientLightConfig.pluginId, config);
             }).then(function (result) {
                 Dashboard.processPluginConfigurationUpdateResult(result);

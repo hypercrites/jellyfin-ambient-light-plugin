@@ -4,7 +4,7 @@
     const BUTTON_ID = "jf-ambient-light-player-button";
     const CANVAS_ID = "jf-ambient-light-canvas";
 
-    if (window.__jfAmbientLightLoaded) {
+    if (window.__jfAmbientLightLoaded && typeof window.jfAmbientLightStop === "function") {
         return;
     }
 
@@ -18,6 +18,7 @@
         fps: 12,
         opacity: 90,
         scale: 1.08,
+        temporalSmoothing: 45,
         video: null,
         container: null,
         canvas: null,
@@ -30,6 +31,7 @@
         videoEvents: [],
         originalStyles: {},
         lastSource: null,
+        hasFrame: false,
         button: null
     };
 
@@ -126,6 +128,7 @@
         state.canvas = null;
         state.ctx = null;
         state.lastSource = null;
+        state.hasFrame = false;
     }
 
     function findPlayer() {
@@ -157,6 +160,22 @@
         }
 
         try {
+            const smoothing = clamp(state.temporalSmoothing, 0, 80) / 100;
+
+            if (force || !state.hasFrame || smoothing <= 0) {
+                state.ctx.globalAlpha = 1;
+                state.ctx.drawImage(
+                    state.video,
+                    0,
+                    0,
+                    state.canvas.width,
+                    state.canvas.height
+                );
+                state.hasFrame = true;
+                return;
+            }
+
+            state.ctx.globalAlpha = 1 - smoothing;
             state.ctx.drawImage(
                 state.video,
                 0,
@@ -164,8 +183,12 @@
                 state.canvas.width,
                 state.canvas.height
             );
+            state.ctx.globalAlpha = 1;
         } catch (_) {
+            state.ctx.globalAlpha = 1;
         }
+
+        state.hasFrame = true;
     }
 
     function setupPlayer(video, container) {
@@ -453,6 +476,10 @@
             state.fps = clamp(Number(config.Fps) || 12, 1, 30);
             state.opacity = clamp(Number(config.Opacity) || 90, 0, 100);
             state.scale = clamp(Number(config.Scale) || 1.08, 1, 1.5);
+            const temporalSmoothing = Number(config.TemporalSmoothing);
+            state.temporalSmoothing = Number.isFinite(temporalSmoothing)
+                ? clamp(temporalSmoothing, 0, 80)
+                : 45;
             state.enabled = getStoredUserEnabled();
         } catch (_) {
             state.enabled = getStoredUserEnabled();
